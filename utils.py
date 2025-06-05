@@ -1,39 +1,45 @@
-import os
 import torch
-import torchvision.transforms as transforms
-from PIL import Image
-from model_def import BrainTumorCNN
+import os
 import gdown
+from torchvision import models
+from PIL import Image
+import torchvision.transforms as transforms
+from torchvision.models import squeezenet1_0, SqueezeNet
+from torch.serialization import add_safe_globals
+from torch.nn import Sequential
+# Image transformation
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+])
 
-MODEL_PATH = 'model/brain_tumor_model.pth'
-GDRIVE_FILE_ID = '12MjvuVkhOd_DiCSircRRveH-9v2W6a0D'
-GDRIVE_URL = f'https://drive.google.com/uc?id={GDRIVE_FILE_ID}'
+def transform_image(image_bytes):
+    image = Image.open(image_bytes).convert("RGB")
+    return transform(image).unsqueeze(0)
 
-def download_model():
-    os.makedirs('model', exist_ok=True)
-    if not os.path.exists(MODEL_PATH):
+def load_model(model_path="model/brain_tumor_squeezenet.pth"):
+    if not os.path.exists(model_path):
+        file_id = "1mIDGIewD4nXiVHBH1xgbzL54LYjgdu2l"
+        url = f"https://drive.google.com/uc?id={file_id}"
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
         print("Downloading model from Google Drive...")
-        gdown.download(GDRIVE_URL, MODEL_PATH, quiet=False)
-        print("Download complete.")
-    else:
-        print("Model already exists locally.")
+        gdown.download(url, model_path, quiet=False)
 
-def load_model(path=MODEL_PATH):
-    download_model()  # Ensure model is available
-    model = BrainTumorCNN()
-    model.load_state_dict(torch.load(path, map_location=torch.device('cpu')))
+    # 👉 Allow loading of SqueezeNet class
+    from torch.serialization import add_safe_globals
+    from torchvision.models.squeezenet import SqueezeNet
+    add_safe_globals({"SqueezeNet": SqueezeNet})
+
+    # 🔁 Load full model object (not just weights)
+    model = torch.load(model_path, map_location=torch.device('cpu'), weights_only=False)
     model.eval()
     return model
 
-def transform_image(image_bytes):
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-    ])
-    image = Image.open(image_bytes).convert('RGB')
-    return transform(image).unsqueeze(0)
 
 def get_prediction(model, image_tensor):
-    outputs = model(image_tensor)
-    _, predicted = torch.max(outputs.data, 1)
-    return "Tumor" if predicted.item() == 1 else "No Tumor"
+    with torch.no_grad():
+        outputs = model(image_tensor)  # ✅ Here model must be a full model
+        _, predicted = torch.max(outputs, 1)
+
+    class_names = ["1", "2", "3", "4"]
+    return class_names[predicted.item()]

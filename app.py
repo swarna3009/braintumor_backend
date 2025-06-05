@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
+from flask_mail import Mail, Message
 from datetime import datetime
 from utils import load_model, transform_image, get_prediction
 import io
@@ -16,7 +17,15 @@ app = Flask(__name__)
 CORS(app)
 
 # Secret key for JWT encoding/decoding
-app.config['SECRET_KEY'] = 'your_secret_key_here'  # Change this in production
+app.config['SECRET_KEY'] = 'your_secret_key_here'
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'kiranpadhy2004@gmail.com'         # Replace
+app.config['MAIL_PASSWORD'] = 'jzjfkpzkncmfkklp'      # Use App Password
+app.config['MAIL_DEFAULT_SENDER'] = 'kiranpadhy2004@gmail.com'   # Same as username
+
+mail = Mail(app)# Change this in production
 
 # MongoDB credentials
 username = quote_plus("swarnaprabhadash31")
@@ -34,7 +43,7 @@ feedback_collection = db["feedback"]
 contacts = db['contacts']
 
 # Load model
-model = load_model("model/brain_tumor_model.pth")
+model = load_model("model/brain_tumor_squeezenet.pth")
 
 @app.route('/')
 def home():
@@ -106,23 +115,47 @@ def admin_dashboard():
     users = list(users_collection.find({}, {"_id": 0, "name": 1, "email": 1}))
     return jsonify({"users": users})
 
-@app.route("/user-register", methods=["POST"])
-def register_user():
-    data = request.json
-    name = data.get("name", "").strip()
-    email = data.get("email", "").strip()
-    password = data.get("password", "").strip()
+@app.route('/user-register', methods=['POST'])
+def registered_users():
+    data = request.get_json()
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
 
     if not name or not email or not password:
-        return jsonify({"success": False, "message": "Name, email, and password are required"}), 400
+        return jsonify({"success": False, "message": "All fields are required"}), 400
 
-    existing_user = users_collection.find_one({"email": email})
-    if existing_user:
-        return jsonify({"success": False, "message": "Email already registered"}), 409
-
+    # ✅ Check if user already exists
+    if users_collection.find_one({"email": email}):
+        return jsonify({"success": False, "message": "Email already registered. Please log in."}), 409
     hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-    users_collection.insert_one({"name": name, "email": email, "password": hashed_pw})
-    return jsonify({"success": True, "message": "User registered successfully"}), 201
+
+
+    # ✅ Register user
+    users_collection.insert_one({
+        "name": name,
+        "email": email,
+        "password": hashed_pw  # Note: Hash passwords in production!
+    })
+
+    # ✅ Send Welcome Email
+    try:
+        msg = Message("Welcome to Brain Tumor Detection App", recipients=[email])
+        msg.body = f"""
+Hi {name},
+
+Thank you for registering on our Brain Tumor Detection website.
+
+We're excited to have you on board. Feel free to explore the features and try out our detection system!
+
+Best regards,  
+Brain Tumor Detection Team
+"""
+        mail.send(msg)
+        return jsonify({"success": True, "email": email})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Failed to send email: {str(e)}"}), 500
+
     # Flask example
 
 @app.route("/user-login", methods=["POST"])
