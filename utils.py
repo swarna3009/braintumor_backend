@@ -26,8 +26,8 @@ def load_model(model_path="brain_tumor_squeezenet.pth"):
         gdown.download(url, model_path, quiet=False)
 
     # 👉 Allow loading of SqueezeNet class
-    from torch.serialization import add_safe_globals
-    from torchvision.models.squeezenet import SqueezeNet
+    #from torch.serialization import add_safe_globals
+    #from torchvision.models.squeezenet import SqueezeNet
     
     # 🔁 Load full model object (not just weights)
     model = torch.load(model_path, map_location=torch.device('cpu'), weights_only=False)
