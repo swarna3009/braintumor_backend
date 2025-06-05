@@ -17,7 +17,7 @@ def transform_image(image_bytes):
     image = Image.open(image_bytes).convert("RGB")
     return transform(image).unsqueeze(0)
 
-def load_model(model_path="model/brain_tumor_squeezenet.pth"):
+def load_model(model_path="brain_tumor_squeezenet.pth"):
     if not os.path.exists(model_path):
         file_id = "1mIDGIewD4nXiVHBH1xgbzL54LYjgdu2l"
         url = f"https://drive.google.com/uc?id={file_id}"
