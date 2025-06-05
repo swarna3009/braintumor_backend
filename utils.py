@@ -28,8 +28,7 @@ def load_model(model_path="model/brain_tumor_squeezenet.pth"):
     # 👉 Allow loading of SqueezeNet class
     from torch.serialization import add_safe_globals
     from torchvision.models.squeezenet import SqueezeNet
-    add_safe_globals({"SqueezeNet": SqueezeNet})
-
+    
     # 🔁 Load full model object (not just weights)
     model = torch.load(model_path, map_location=torch.device('cpu'), weights_only=False)
     model.eval()
