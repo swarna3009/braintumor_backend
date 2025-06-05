@@ -5,7 +5,7 @@ from torchvision import models
 from PIL import Image
 import torchvision.transforms as transforms
 from torchvision.models import squeezenet1_0, SqueezeNet
-from torch.serialization import add_safe_globals
+
 from torch.nn import Sequential
 # Image transformation
 transform = transforms.Compose([
