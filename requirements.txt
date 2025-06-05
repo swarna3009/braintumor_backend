@@ -11,3 +11,4 @@ gunicorn
 torch
 torchvision
 gdown
+flask_mail
